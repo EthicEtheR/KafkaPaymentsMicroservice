@@ -1,0 +1,84 @@
+package com.aether.DepositeService.config;
+
+import com.aether.core.error.NotRetryableException;
+import com.aether.core.error.RetryableException;
+import lombok.RequiredArgsConstructor;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
+import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
+import org.springframework.util.backoff.FixedBackOff;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Configuration
+@RequiredArgsConstructor
+public class KafkaConsumerConfig {
+
+    private final Environment environment;
+
+
+
+
+    @Bean
+    ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
+            ConsumerFactory<String, Object> consumerFactory, KafkaTemplate<String,Object> kafkaTemplate) {
+        //it send bad msg to DLT
+        DefaultErrorHandler errorHandler=
+                new DefaultErrorHandler(new DeadLetterPublishingRecoverer(kafkaTemplate),
+                        new FixedBackOff(5000,3));
+        errorHandler.addNotRetryableExceptions(NotRetryableException.class);
+        errorHandler.addRetryableExceptions(RetryableException.class);
+
+        ConcurrentKafkaListenerContainerFactory<String, Object> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory);
+        factory.setCommonErrorHandler(errorHandler);
+        return factory;
+    }
+
+    @Bean
+    ConsumerFactory<String,Object> consumerFactory(){
+        Map<String,Object> config=new HashMap<>();
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                environment.getProperty("spring.kafka.consumer.bootstrap-servers"));
+        config.put(ConsumerConfig.GROUP_ID_CONFIG,
+                environment.getProperty("consumer.group-id"));
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG , StringDeserializer.class);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        config.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JacksonJsonDeserializer.class);
+        config.put(JacksonJsonDeserializer.TRUSTED_PACKAGES,
+                environment.getProperty("spring.kafka.consumer.properties.spring.json.trusted.packages"));
+        config.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG,
+                environment.getProperty("spring.kafka.consumer.isolation-level"));
+
+        return new DefaultKafkaConsumerFactory<>(config);
+    }
+    //**** dead letter config ---sending bad msg to broker
+    @Bean
+    KafkaTemplate<String,Object> kafkaTemplate(ProducerFactory<String,Object> producerFactory){
+        return new KafkaTemplate<>(producerFactory);
+    }
+
+    @Bean
+    ProducerFactory<String,Object> producerFactory(){
+        Map<String,Object> config=new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                environment.getProperty("spring.kafka.consumer.bootstrap-servers"));
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
+
+        return new DefaultKafkaProducerFactory<>(config);
+    }
+}
