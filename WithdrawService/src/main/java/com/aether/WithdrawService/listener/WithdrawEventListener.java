@@ -7,15 +7,13 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
-@KafkaListener(topics = "withdraw-money-topic")
 @Slf4j
 @Component
+@KafkaListener(topics = "withdraw-money-topic")
 public class WithdrawEventListener {
 
     @KafkaHandler
-    void withdrawing(@Payload WithdrawReqEvent withdrawReqEvent){
-
-        log.info("Received receiverId :{}",withdrawReqEvent.getReceiverId());
-
+    public void withdrawing(@Payload  WithdrawReqEvent event) {
+        log.info("Received receiverId: {}", event.getReceiverId());
     }
 }

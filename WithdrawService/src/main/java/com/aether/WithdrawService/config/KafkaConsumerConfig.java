@@ -29,22 +29,6 @@ public class KafkaConsumerConfig {
 
 
 
-    //**** dead letter config ---sending bad msg to broker
-    @Bean
-    KafkaTemplate<String,Object> kafkaTemplate(ProducerFactory<String,Object> producerFactory){
-        return new KafkaTemplate<>(producerFactory);
-    }
-
-    @Bean
-    ProducerFactory<String,Object> producerFactory(){
-        Map<String,Object> config=new HashMap<>();
-        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                environment.getProperty("spring.kafka.consumer.bootstrap-servers"));
-        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
-
-        return new DefaultKafkaProducerFactory<>(config);
-    }
 
     @Bean
     ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
@@ -65,20 +49,37 @@ public class KafkaConsumerConfig {
 
     @Bean
     ConsumerFactory<String,Object> consumerFactory(){
-        Map<String,Object> config=new HashMap<>();
+        Map<String,Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                 environment.getProperty("spring.kafka.consumer.bootstrap-servers"));
         config.put(ConsumerConfig.GROUP_ID_CONFIG,
                 environment.getProperty("consumer.group-id"));
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG , StringDeserializer.class);
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");          // added
+        config.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         config.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JacksonJsonDeserializer.class);
-        config.put(JacksonJsonDeserializer.TRUSTED_PACKAGES,
-                environment.getProperty("spring.kafka.consumer.properties.spring.json.trusted.packages"));
-        config.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG,
-                environment.getProperty("spring.kafka.consumer.isolation-level"));
-
+        config.put(JacksonJsonDeserializer.VALUE_DEFAULT_TYPE,
+                "com.aether.core.events.WithdrawReqEvent");                        // added
+        config.put(JacksonJsonDeserializer.USE_TYPE_INFO_HEADERS, false);          // added
+        config.put(JacksonJsonDeserializer.TRUSTED_PACKAGES, "com.aether.core.events");
         return new DefaultKafkaConsumerFactory<>(config);
+    }
+    //**** dead letter config ---sending bad msg to broker
+    @Bean
+    KafkaTemplate<String,Object> kafkaTemplate(ProducerFactory<String,Object> producerFactory){
+        return new KafkaTemplate<>(producerFactory);
+    }
+
+    @Bean
+    ProducerFactory<String,Object> producerFactory(){
+        Map<String,Object> config=new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                environment.getProperty("spring.kafka.consumer.bootstrap-servers"));
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
+
+        return new DefaultKafkaProducerFactory<>(config);
     }
 
 }

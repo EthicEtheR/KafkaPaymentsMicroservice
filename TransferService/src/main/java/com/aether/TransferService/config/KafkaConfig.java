@@ -1,5 +1,7 @@
 package com.aether.TransferService.config;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.TopicConfig;
@@ -11,6 +13,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
+import org.springframework.orm.jpa.JpaTransactionManager;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -76,6 +79,10 @@ public class KafkaConfig {
     @Bean("kafkaTransactionManager")
     KafkaTransactionManager<String,Object> kafkaTransactionManager(ProducerFactory<String,Object> producerFactory){
         return new KafkaTransactionManager<>(producerFactory);
+    }
+    @Bean("transactionManager")
+    JpaTransactionManager jpaTransactionManager(EntityManagerFactory entityManagerFactory){
+        return new JpaTransactionManager(entityManagerFactory);
     }
     @Bean
     ProducerFactory<String,Object> producerFactory(){

@@ -7,8 +7,7 @@ public class WithdrawReqEvent {
     private String receiverId;
     private BigDecimal amount;
 
-    public WithdrawReqEvent(String senderId) {
-
+    public WithdrawReqEvent() {
     }
 
     public WithdrawReqEvent(String senderId, String receiverId, BigDecimal amount) {
